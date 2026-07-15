@@ -38,5 +38,5 @@ export const api = {
 
   getCurrentPlan: (userId: string) => {
     return get(`/plan/current?userId=${userId}`);
-  },
+  }
 };

@@ -1,26 +1,36 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-
+import type { TrainingPlan, User, UserProfile } from "../types";
 import { authClient } from "../lib/auth";
-import type { User, UserProfile } from "../types";
 import { api } from "../lib/api";
 
 interface AuthContextType {
   user: User | null;
+  plan: TrainingPlan | null;
   isLoading: boolean;
-  saveProfile: (profile: Omit<UserProfile, "userId" | "updatedAt">) => Promise<void>;
+  hasCheckedPlan: boolean;
+  saveProfile: (
+    profile: Omit<UserProfile, "userId" | "updatedAt">,
+  ) => Promise<void>;
+  generatePlan: () => Promise<void>;
+  refreshData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
-  const [neonUser, setNeonUser] = useState<User | null>(null);
+  const [neonUser, setNeonUser] = useState<any>(null);
+  const [plan, setPlan] = useState<TrainingPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasCheckedPlan, setHasCheckedPlan] = useState(false);
+  const isRefreshingRef = useRef(false);
 
   useEffect(() => {
     async function loadUser() {
@@ -33,9 +43,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (err) {
         setNeonUser(null);
-        console.error("Error loading user:", err);
-      }
-      finally {
+      } finally {
         setIsLoading(false);
       }
     }
@@ -43,19 +51,79 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     loadUser();
   }, []);
 
-  async function saveProfile(profile: Omit<UserProfile, "userId" | "updatedAt">) {
-    if (!neonUser) {
-      throw new Error("User is not authenticated");
+  // refreshData memoize
+  const refreshData = useCallback(async () => {
+    if (!neonUser || isRefreshingRef.current) return;
+
+    isRefreshingRef.current = true;
+    setHasCheckedPlan(false);
+
+    try {
+      const planData = await api.getCurrentPlan(neonUser.id).catch(() => null);
+      if (planData) {
+        setPlan({
+          id: planData.id,
+          userId: planData.userId,
+          overview: planData.planJson.overview,
+          weeklySchedule: planData.planJson.weeklySchedule,
+          progression: planData.planJson.progression,
+          version: planData.version,
+          createdAt: planData.createdAt,
+        });
+      } else {
+        setPlan(null);
+      }
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      setPlan(null);
+    } finally {
+      isRefreshingRef.current = false;
+      setHasCheckedPlan(true);
     }
-    await api.saveProfile(neonUser.id, profile);
+  }, [neonUser?.id]);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    if (!neonUser?.id) {
+      setPlan(null);
+      setHasCheckedPlan(true);
+      return;
+    }
+
+    void refreshData();
+  }, [neonUser?.id, isLoading, refreshData]);
+
+  async function saveProfile(
+    profileData: Omit<UserProfile, "userId" | "updatedAt">,
+  ) {
+    if (!neonUser) {
+      throw new Error("User must be authenticated to save profile");
+    }
+
+    await api.saveProfile(neonUser.id, profileData);
+    await refreshData();
+  }
+
+  async function generatePlan() {
+    if (!neonUser) {
+      throw new Error("User must be authenticated to generate plan");
+    }
+
+    await api.generatePlan(neonUser.id);
+    await refreshData();
   }
 
   return (
     <AuthContext.Provider
       value={{
         user: neonUser,
-        isLoading: isLoading,
-        saveProfile: saveProfile
+        plan,
+        isLoading,
+        hasCheckedPlan,
+        saveProfile,
+        generatePlan,
+        refreshData,
       }}
     >
       {children}
@@ -63,7 +131,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

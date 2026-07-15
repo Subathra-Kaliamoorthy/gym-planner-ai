@@ -6,7 +6,7 @@ CREATE TABLE "user_profile" (
     "days_per_week" INTEGER NOT NULL,
     "session_length" INTEGER NOT NULL,
     "equipment" VARCHAR(20) NOT NULL,
-    "injuries" TEXT NOT NULL,
+    "injuries" TEXT,
     "preferred_split" VARCHAR(20) NOT NULL,
     "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
