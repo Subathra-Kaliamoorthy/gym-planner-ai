@@ -18,6 +18,7 @@ async function post(path: string, body: object) {
 
 async function get(path: string) {
   const res = await fetch(`${BASE_URL}/api${path}`);
+  if (res.status === 404) return null; // treat "not found" as no data yet, not a console error
   if (!res.ok)
     throw new Error(
       (await res.json().catch(() => ({}))).error || "Request failed",
