@@ -16,7 +16,7 @@ export default function Navbar() {
                     <Dumbbell className="w-6 h-6 text-[var(--color-accent)]" />
                     <span className="font-semibold text-lg">GymAI</span>
                 </Link>
-                <nav>
+                <nav className="flex items-center gap-2">
                     {user ? (
                         <>
                         <Link to="/profile">
@@ -24,7 +24,8 @@ export default function Navbar() {
                             My Plan
                             </Button>
                         </Link>
-                        <UserButton className="bg-(--color-accent)" />
+                        <UserButton className="hidden sm:flex bg-(--color-accent)" />
+                        <UserButton size="sm" className="flex sm:hidden bg-(--color-accent)" />
                         </>
                     ) : (
                         <>
