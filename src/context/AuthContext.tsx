@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -10,6 +11,17 @@ import {
 import type { TrainingPlan, User, UserProfile } from "../types";
 import { authClient } from "../lib/auth";
 import { api } from "../lib/api";
+
+const ANON_USER_ID_KEY = "gymai_anon_user_id";
+
+function getAnonymousUserId() {
+  let id = localStorage.getItem(ANON_USER_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(ANON_USER_ID_KEY, id);
+  }
+  return id;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -51,6 +63,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     loadUser();
   }, []);
 
+  const userId = useMemo(
+    () => neonUser?.id ?? getAnonymousUserId(),
+    [neonUser?.id],
+  );
+
   // refreshData memoize
   const refreshData = useCallback(async () => {
     if (!neonUser || isRefreshingRef.current) return;
@@ -80,37 +97,23 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       isRefreshingRef.current = false;
       setHasCheckedPlan(true);
     }
-  }, [neonUser?.id]);
+  }, [userId]);
 
   useEffect(() => {
     if (isLoading) return;
 
-    if (!neonUser?.id) {
-      setPlan(null);
-      setHasCheckedPlan(true);
-      return;
-    }
-
     void refreshData();
-  }, [neonUser?.id, isLoading, refreshData]);
+  }, [userId, isLoading, refreshData]);
 
   async function saveProfile(
     profileData: Omit<UserProfile, "userId" | "updatedAt">,
   ) {
-    if (!neonUser) {
-      throw new Error("User must be authenticated to save profile");
-    }
-
-    await api.saveProfile(neonUser.id, profileData);
+    await api.saveProfile(userId, profileData);
     await refreshData();
   }
 
   async function generatePlan() {
-    if (!neonUser) {
-      throw new Error("User must be authenticated to generate plan");
-    }
-
-    await api.generatePlan(neonUser.id);
+    await api.generatePlan(userId);
     await refreshData();
   }
 
