@@ -13,7 +13,7 @@ import { PlanDisplay } from "../components/plan/PlanDisplay";
 import AnonymousPlanBanner from "../components/layout/AnonymousPlanBanner";
 
 export default function Profile() {
-  const { user, isLoading, hasCheckedPlan, plan, generatePlan } = useAuth();
+  const { hasCheckedPlan, plan, generatePlan } = useAuth();
 
   if (!hasCheckedPlan) {
     return (
@@ -41,7 +41,7 @@ export default function Profile() {
 
   return (
     <>
-      <AnonymousPlanBanner>
+      <AnonymousPlanBanner />
       <div className="min-h-screen pt-24 pb-12 px-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -121,7 +121,6 @@ export default function Profile() {
           </Card>
         </div>
       </div>
-      </AnonymousPlanBanner>
     </>
   );
 }
